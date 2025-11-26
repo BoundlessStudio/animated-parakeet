@@ -4,7 +4,6 @@ import { getSandbox, type ExecOptions } from '@cloudflare/sandbox';
 export { Sandbox } from "@cloudflare/sandbox";
 
 interface ExecDto {
-  id: string,
   command: string[],
   timeoutMs?: number;
   env?: Record<string, string>;
@@ -12,14 +11,12 @@ interface ExecDto {
 }
 
 interface FileWriteDto {
-  id: string,
   path: string,
   data: string,
   isBinary: boolean,
 }
 
 interface FileReadDto {
-  id: string,
   path: string,
 }
 
@@ -31,8 +28,10 @@ function shellEscape(arg: string): string {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
-      
       const url = new URL(request.url);
+      const id = url.searchParams.get("id") ?? 'animated-parakeet';
+      const sandbox = getSandbox(env.Sandbox, id);
+
       if (url.pathname === "/terminal" && request.method === "POST") {
         const body = await request.json<ExecDto>();
         const options = {
@@ -46,25 +45,18 @@ export default {
           .map(shellEscape)
           .join(" ");
 
-        const sandbox = getSandbox(env.Sandbox, 'animated-parakeet');
         const result = await sandbox.exec(command, options);
         return Response.json(result);
       } else if (url.pathname === "/file/exists" && request.method === "POST") {
         const body = await request.json<FileReadDto>();
-
-        const sandbox = getSandbox(env.Sandbox, 'animated-parakeet');
         const result = await sandbox.exists(body.path);
         return Response.json(result);
       } else if (url.pathname === "/file/read" && request.method === "POST") {
         const body = await request.json<FileReadDto>();
-
-        const sandbox = getSandbox(env.Sandbox, 'animated-parakeet');
         const result = await sandbox.readFile(body.path);
         return Response.json(result);
       } else if (url.pathname === "/file/write" && request.method === "POST") {
         const body = await request.json<FileWriteDto>();
-
-        const sandbox = getSandbox(env.Sandbox, 'animated-parakeet');
         const result = await sandbox.writeFile(body.path, body.data, { encoding: body.isBinary ? 'base64' : 'utf-8' });
         return Response.json(result);
       } else {
